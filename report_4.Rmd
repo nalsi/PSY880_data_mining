@@ -1,0 +1,313 @@
+---
+title: "Homework Week 5"
+author: "Kai Li"
+date: "2/8/2017"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ISLR)
+library(e1071)
+library(pander)
+
+```
+
+## R Markdown
+
+#### (a) Create training and test sets
+
+After loading the data, it is realized that not only there are three factor elements in the dataset, STORE, Store7, and StoreID, the information in these three variables is repetitive too: the codes in STORE and StoreID can be directly translated into each other; both code systems can also be mapped to the binary coding system in Store7. As a result, only one element, STORE, is kept in the dataset.
+
+``` {R}
+
+# Read OJ dataset
+
+OJ <- OJ[,-c(3, 14)]
+OJ$STORE <- as.factor(OJ$STORE)
+
+```
+
+``` {R}
+
+# Random sampling
+set.seed(1)
+train <- sample(nrow(OJ), 800)
+OJ.train <- OJ[train,]
+OJ.test <- OJ[-train,]
+
+```
+
+#### (b) Fit support vector classifier with training set
+
+``` {R}
+
+svmfit <- svm(formula = Purchase ~ .,
+              data = OJ.train,
+              kernel = "linear",
+              cost = 0.01)
+
+summary(svmfit)
+
+```
+
+The results suggest that the svm classifier is based on cost = 0.01 and gamma = 0.056. Out of all the 800 data points, 628 are support vectors. As suggested by the low cost, the margin is quite wide.
+
+#### (c) Test error rates on both sets.
+
+Below are the results when the model is applied on the training set.
+
+``` {R}
+
+predict.training <- predict(svmfit, newdata = OJ.train)
+
+table(predict = predict.training,
+      original = OJ.train$Purchase)
+
+accuracy_rate.1 <- round(mean(predict.training == OJ.train$Purchase),
+                         digits = 4) * 100
+
+```
+
+The overall accuracy rate for the training set is `r accuracy_rate.1`%.
+
+Below are the results of applying the model on the test set.
+
+``` {R}
+
+predict.test <- predict(svmfit, newdata = OJ.test)
+
+table(predict = predict.test,
+      original = OJ.test$Purchase)
+
+accuracy_rate.2 <- round(mean(predict.test == OJ.test$Purchase),
+                         digits = 4) * 100
+
+```
+
+The overall accuracy rate for the test set is `r accuracy_rate.2`%.
+
+#### (d) Model tune
+
+``` {R}
+
+svmfit.tune <- tune(svm, 
+                    Purchase ~ .,
+                    data = OJ.train,
+                    kernel = "linear",
+                    ranges = list(cost = c(0.01,
+                                          0.05,
+                                          0.1,
+                                          0.5,
+                                          1,
+                                          5,
+                                          10)))
+
+summary(svmfit.tune)
+
+```
+
+According to the results, cost = 0.5 is the most optimal cost among all the candidates given.
+
+#### (e) Test new model on both sets
+
+Below are the results of applying the new model on the training set.
+
+``` {R}
+
+best.model <- svmfit.tune$best.model
+
+predict.training.2 <- predict(best.model, newdata = OJ.train)
+
+table(predict = predict.training.2,
+      original = OJ.train$Purchase)
+
+accuracy_rate.3 <- round(mean(predict.training.2 == OJ.train$Purchase),
+                         digits = 4) * 100
+
+```
+
+The accuracy rate on the training test is `r accuracy_rate.3`%.
+
+Below are the results of applying the new model on the test set.
+
+``` {R}
+
+predict.test.2 <- predict(best.model, newdata = OJ.test)
+
+table(predict = predict.test.2,
+      original = OJ.test$Purchase)
+
+accuracy_rate.4 <- round(mean(predict.test.2 == OJ.test$Purchase),
+                         digits = 4) * 100
+
+```
+
+The accuracy rate on the test test is `r accuracy_rate.4`%, slightly higher than the first model.
+
+#### (f) radial kernel
+
+The same model using radial kernal as part I was applied to the training and test sets. However, the model doesn't seen to return reasonable results. This might due to the very low cost parameter passing to the model, which result a too loose model. For example, if the cost is raised to 0.05, the results seem to be more meaningful.
+
+``` {R}
+
+svmfit.radial <- svm(Purchase ~ .,
+                     data = OJ,
+                     subset = train,
+                     cost = 0.01,
+                     kernel = 'radial')
+
+summary(svmfit.radial)
+
+predict.training.radial <- predict(svmfit.radial, OJ.train)
+
+table(predict = predict.training.radial,
+      original = OJ.train$Purchase)
+
+accuracy_rate.5 <- round(mean(predict.training.radial == OJ.train$Purchase),
+                         digits = 4) * 100
+
+predict.test.radial <- predict(svmfit.radial, OJ.test)
+
+table(predict = predict.test.radial,
+      original = OJ.test$Purchase)
+
+accuracy_rate.6 <- round(mean(predict.test.radial == OJ.test$Purchase),
+                         digits = 4) * 100
+
+```
+
+The model is tuned, and the best result is the one with cost = 0.5 and gamma = 0.1. The new model is applied to both the training and test sets. The results of radial model is summarized below.
+
+``` {R}
+
+svmfit.radial.tune <- tune(svm, 
+                    Purchase ~ .,
+                    data = OJ.train,
+                    kernel = "radial",
+                    ranges = list(cost = c(0.01,
+                                          0.05,
+                                          0.1,
+                                          0.5,
+                                          1,
+                                          5,
+                                          10),
+                                  gamma = c(0.1,
+                                          0.5,
+                                          1,
+                                          2,
+                                          4)))
+
+summary(svmfit.radial.tune)
+
+best.model.2 <- svmfit.radial.tune$best.model
+
+predict.training.radial.2 <- predict(best.model.2, newdata = OJ.train)
+
+accuracy_rate.7 <- round(mean(predict.training.radial.2 == OJ.train$Purchase),
+                         digits = 4) * 100
+
+predict.test.radial.2 <- predict(best.model.2, newdata = OJ.test)
+
+accuracy_rate.8 <- round(mean(predict.test.radial.2 == OJ.test$Purchase),
+                         digits = 4) * 100
+
+```
+
+``` {R}
+
+radial.table <- data.frame(Set = c("Train", "Test"), 
+                           Model_origin = c(accuracy_rate.5, accuracy_rate.6),
+                           Model_tuned = c(accuracy_rate.7, accuracy_rate.8))
+
+pander(radial.table)
+
+```
+
+#### (g) polymonial kernel
+
+The same results as happened to radial kernal happened in this section as well. And as the cost is increased, the results are more meaningful.  
+
+``` {R}
+
+svmfit.polynomial <- svm(Purchase ~ .,
+                         data = OJ,
+                         subset = train,
+                         cost = 0.01,
+                         kernel = 'polynomial',
+                         degree = 2)
+
+summary(svmfit.polynomial)
+
+predict.training.polynomial <- predict(svmfit.polynomial, OJ.train)
+
+table(predict = predict.training.polynomial,
+      original = OJ.train$Purchase)
+
+accuracy_rate.9 <- round(mean(predict.training.polynomial == OJ.train$Purchase),
+                         digits = 4) * 100
+
+predict.test.polynomial <- predict(svmfit.polynomial, OJ.test)
+
+table(predict = predict.test.polynomial,
+      original = OJ.test$Purchase)
+
+accuracy_rate.10 <- round(mean(predict.test.polynomial == OJ.test$Purchase),
+                         digits = 4) * 100
+
+```
+
+According to the result of the model tuning, the most optimal choice is cost = 5 and gamma = 0.1. And then the optimal model is applied to both sets. Summarized below are the results of this section.
+
+``` {R}
+
+svmfit.polynomial.tune <- tune(svm, 
+                    Purchase ~ .,
+                    data = OJ.train,
+                    kernel = "polynomial",
+                    degree = 2,
+                    ranges = list(cost = c(0.01,
+                                          0.05,
+                                          0.1,
+                                          0.5,
+                                          1,
+                                          5,
+                                          10),
+                                  gamma = c(0.1,
+                                          0.5,
+                                          1,
+                                          2,
+                                          4)))
+
+summary(svmfit.polynomial.tune)
+
+best.model.3 <- svmfit.polynomial.tune$best.model
+
+predict.training.polynomial.2 <- predict(best.model.3, newdata = OJ.train)
+
+accuracy_rate.11 <- round(mean(predict.training.polynomial.2 == OJ.train$Purchase),
+                         digits = 4) * 100
+
+predict.test.polynomial.2 <- predict(best.model.3, newdata = OJ.test)
+
+accuracy_rate.12 <- round(mean(predict.test.polynomial.2 == OJ.test$Purchase),
+                         digits = 4) * 100
+
+```
+
+``` {R}
+
+radial.table <- data.frame(Set = c("Train", "Test"), 
+                           Model_origin = c(accuracy_rate.9, accuracy_rate.10),
+                           Model_tuned = c(accuracy_rate.11, accuracy_rate.12))
+
+pander(radial.table)
+
+```
+
+#### Conclusion
+
+Based on the overall accuracy rate, it can be concluded that radial model is the best model for this dataset, followed by polynomial model.

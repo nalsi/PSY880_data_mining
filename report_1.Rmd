@@ -1,0 +1,109 @@
+---
+title: "Exercise 1"
+author: "Kai Li"
+date: "1/18/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F)
+
+library(MASS)
+library(psych)
+
+```
+
+## Question 1
+
+![](https://raw.githubusercontent.com/nalsi/PSY880_data_mining/master/IMG_20170119_114250.jpg)
+
+Similar with other statistical learning models, in Bayes Classifer model, the **training MSE** should be monotonously decreasing as the flexibility increases. On the other hand, the **test MSE** is U-shaped and is constantly higher than the training MSE.
+
+The **variance** increases as the flexibility increases. The **bias** decreases as the flexibility increases.
+
+## Question 2
+
+``` {R echo = F}
+
+data <- Boston
+
+```
+
+### (a)
+
+There are `r nrow(data)` rows and `r ncol(data)` columns in this dataset. Each row is a record of a town belonging to the Boston area. Each column is a variable, including the following, based on the help file:
+
+- crim: per capita crime rate by town.
+- zn: proportion of residential land zoned for lots over 25,000 sq.ft.
+- indus: proportion of non-retail business acres per town.
+- chas: Charles River dummy variable (= 1 if tract bounds river; 0 otherwise).
+- nox: nitrogen oxides concentration (parts per 10 million).
+- rm: average number of rooms per dwelling.
+- age: proportion of owner-occupied units built prior to 1940.
+- dis: weighted mean of distances to five Boston employment centres.
+- rad: index of accessibility to radial highways.
+- tax: full-value property-tax rate per \$10,000.
+- ptratio: pupil-teacher ratio by town.
+- black: 1000(Bk - 0.63)^2 where Bk is the proportion of blacks by town.
+- lstat: lower status of the population (percent).
+- medv: median value of owner-occupied homes in \$1000s.
+
+### (b)
+
+Below is the pairwise scatterplot for the variables of rm, lstat, and medv. This scatterplot suggests that all the three variables are strongly correlated with each other. There seems to be a positive correlation between rm and medv. And both of the other two pairs are negatively correlated. 
+
+``` {R}
+
+pairs(~rm + lstat + medv, data)
+
+```
+
+### (c)
+
+As the table below shows, the predictor that is most correlated with per capital crime rate (crim) is index of accessibility to radial highways (rad). The Pearson correlation coefficient is 0.626, which means that these two variables are positively correlated.
+
+``` {R}
+
+cor <- data.frame(cor(data)[,1])
+cor.1 <- data.frame(corr.test(data,data)$p[,1])
+cor.table <- cbind(cor, cor.1)
+colnames(cor.table) <- c("correlation", "p-value")
+cor.table[,1] <- round(cor.table[,1], digits = 3)
+cor.table
+
+```
+
+### (d)
+
+There are `r nrow(data[data$chas == 1,])` suburbs set bound the Charles River.
+
+### (e)
+
+The median pupil-teacher ratio in this dataset is `r median(data$ptratio)`.
+
+### (f)
+
+The suburb of Boston that has the lowest median value of owner-occupied homes are rows `r which(data$medv == min(data$medv))[1]` and `r which(data$medv == min(data$medv))[2]`. Below are the profiles of these two towns (the first two columns) as compared with the mean and median values of whole datasets (the last two columns). 
+
+``` {R}
+
+comp.1 <- data[399,]
+comp.2 <- data[406,]
+comp.3 <- describe.by(data)[,3]
+comp.4 <- describe.by(data)[,5]
+
+com <- rbind(comp.1, comp.2, comp.3, comp.4)
+com <- data.frame(t(com))
+colnames(com) <- c("Town.1", "Town.2", "Mean", "Median")
+com <- com[-c(4),]
+com
+
+```
+
+Because of the highly screwed distribution of a large number of these variables, there is a wide gap between the mean and median values in many of them. Following are a number of observations that can be drawn about these two towns: 
+
+- They are closer to the center area of Boston, which is reflected in their low values in the variables of distances to five Boston emplyment centres (dis) and accessibility to radial highways (rad). 
+- They are highly industrial, as reflected in their high values in the variables of non-retail business acres per town (indus) and nitrogen oxides concentration (nox). 
+- Their housing is old, as reflected in their high values in the variables of the proportion of units built before 1940 (age).
+- Their local economic conditions are relatively poorer than most other areas, as reflected in their high values in pupil-teacher ration (ptratio), percentage of population in lower status (lstat), and property tax rate (tax). The last variable is a reflection of the local economic condition and strongly connected to the house values.
+

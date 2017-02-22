@@ -1,0 +1,50 @@
+---
+title: "Week 7 assignment"
+author: "Kai Li"
+date: "2/22/2017"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1
+
+#### (a) Complete linking
+
+``` {R fig.width = 4, fig.height = 2.8}
+
+data <- data.frame(A = c(0, 0.3, 0.4, 0.7),
+                   B = c(0, 0, 0.5, 0.8),
+                   C = c(0, 0, 0, 0.45),
+                   D = c(rep(0, 4)))
+
+distance <- as.dist(data)
+
+plot(hclust(distance, 
+            method = "complete"),
+     main = "Hierarchical clustering - complete linking",
+     xlab = "", sub = "")
+
+```
+
+#### (b) Single linking
+
+``` {R fig.width = 4, fig.height = 2.8}
+
+plot(hclust(distance, 
+            method = "single"),
+     main = "Hierarchical clustering - complete linking",
+     xlab = "", sub = "")
+
+```
+
+#### (c) & (d) Cutting dendogram
+
+For the first dendogram, A & B are in the first cluster, C & D the second. 
+
+For the second dedogram, D is in its own cluster, while the other three in another cluster.
+
+#### (e)
+

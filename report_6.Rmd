@@ -1,0 +1,157 @@
+---
+title: "Homework Week 6"
+author: "Kai Li"
+date: "2/15/2017"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ISLR)
+library(psych)
+library(pander)
+library(tree)
+
+```
+
+## (a) Created training and test sets
+
+First is a summary of the OJ dataset. And because of the fact that the three variables, namely STORE, Store7, and StoreID, are repetitive, only STORE is kept in the dataset that is used for analysis.
+
+``` {R}
+
+OJ <- OJ[,-c(3, 14)]
+OJ$Purchase <- as.factor(OJ$Purchase)
+OJ$STORE <- as.factor(OJ$STORE)
+
+describeBy(OJ)
+
+```
+
+``` {R}
+
+## Define train and test sets
+
+set.seed(1)
+train <- sample(nrow(OJ), 800)
+OJ.train <- OJ[train,]
+OJ.test <- OJ[-train,]
+
+```
+
+## (b) Grow and interpret the tree
+
+``` {R}
+
+## Growing the tree
+
+tree.OJ <- tree(Purchase ~ .,
+                data = OJ.train)
+summary(tree.OJ)
+
+```
+
+Based on the summary of the model, there are 8 terminal nodes in the model. The error rate is 16.5%. Moreover, out of the 15 predicting variables, only four are used in the tree.
+
+## (c) Interpret nodes
+
+``` {R}
+
+tree.OJ
+
+```
+
+According to the results displayed above, the eight node with an asterisk are terminal nodes. The first of them, #8, is the cluster whose LoyalCH smaller than both 0.508, 0.264, and 0.035. There are 57 observations falling into this category. And the expected classification for this category is MM, which is normal.
+
+## (d) Ploting the tree
+
+``` {R fig.width = 6, fig.height = 4}
+
+plot(tree.OJ)
+text(tree.OJ, pretty=0)
+
+```
+
+The plot shows, in a direct way, that all the customers whose Loyalty to CH under 0.264 resort to MM. And all of them whose loyalty to CH above 0.508 go to CH. For those in between, price difference and the availability of spcial offer of CH are the two most important factors.
+
+## (e) Predict the response
+
+``` {R}
+
+OJ.pred <- predict(tree.OJ, 
+                OJ.test,
+                type="class")
+
+table(Prediction = OJ.pred,
+      Origin = OJ.test$Purchase)
+accuracy_rate_1 <- round(mean(OJ.pred == OJ.test$Purchase), digits = 3) * 100
+
+```
+
+Below is the confusion matrix of applying the tree model to the test set. The overall accuracy rate is `r accuracy_rate_1`%.
+
+## (f) Prune the tree
+
+Function cv.tree is applied to prune the tree.
+
+``` {R}
+
+set.seed(1)
+pruning <- cv.tree(tree.OJ,
+                         FUN = prune.misclass)
+
+```
+
+## (g) & (h) Plot the results and the most optimal number
+
+``` {R}
+
+plot(pruning$size,
+     pruning$dev,
+     type="b")
+
+```
+
+Based on the plot, size = 5 might be the most optimal number of terminal node.
+
+## (i) Pruned tree
+
+``` {R}
+
+tree.OJ.prune <- prune.misclass(tree.OJ,
+                                best = 5)
+plot(tree.OJ.prune)
+text(tree.OJ.prune,
+     pretty=0)
+
+```
+
+## (j) Pruned accuracy rate
+
+Based on the summary of the models per se, the two models have the same error rate.
+
+``` {R}
+
+OJ.pred.prune <- predict(tree.OJ.prune, 
+                OJ.test,
+                type="class")
+
+summary(tree.OJ.prune)
+
+```
+
+## (K) test accuracy rate
+
+``` {R}
+
+table(Prediction = OJ.pred.prune,
+      Origin = OJ.test$Purchase)
+accuracy_rate_2 <- round(mean(OJ.pred.prune == OJ.test$Purchase), digits = 3) * 100
+
+```
+
+As shown in the confusion table below, the two tables reach the exact same accuracy rate on the test set.
+
