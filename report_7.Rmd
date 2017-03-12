@@ -7,6 +7,10 @@ output: word_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+library(ISLR)
+library(psych)
+
 ```
 
 ## Question 1
@@ -48,3 +52,52 @@ For the second dedogram, D is in its own cluster, while the other three in anoth
 
 #### (e)
 
+![](https://raw.githubusercontent.com/nalsi/PSY880_data_mining/master/11487798077_.pic.jpg)
+
+## Question 2
+
+Below are some descriptive analysis of the data set. It seems that the variable of Rape is highly skewed.
+
+``` {R}
+
+data <- USArrests
+describeBy(data)
+
+par(mfrow = c(2,2))
+hist(data$Murder)
+hist(data$Assault)
+hist(data$UrbanPop)
+hist(data$Rape)
+
+```
+
+#### (a) & (b) complete linkage and cut into three clusters
+
+``` {R fig.width = 7, fig.height = 4}
+
+distance.2 <- dist(data)
+fit <- hclust(distance.2,
+            method = "complete")
+plot(fit)
+rect.hclust(fit, k = 3)
+
+```
+
+Based on the results, the first category includes: Florida, N Carolina, Delaware, Alabama, Louisiana, Alaska, Mississippi, S Carolina, Maryland, Arizona, New Mexico, California, Illinois, New York, Michigan, and Nevada. The second category includes Missouri, Arkansas, Tennessee, Georgia, Colorado, Texas, Rhode Island, Wyoming, Oregon, Oklahoma, Virginia, Washington, Mass., and New Jersey. The last category includes Ohio, Utah, Conn., Penn., Nebraska, Kentucky, Montana, Idaho, Indiana, Kansas, Hawaii, Minnesota, Wisconsin, Iowa, New Hampshire, W Virginia, Maine, S Dakota, N Dakota, and Vermont.
+
+#### (c) Hierarchical clustering based on scaled data
+
+``` {R}
+
+data[,1:4] <- scale(data[,1:4])
+distance.2 <- dist(data)
+fit <- hclust(distance.2,
+            method = "complete")
+plot(fit)
+rect.hclust(fit, k = 3)
+
+```
+
+#### (d) Reasoning scale
+
+Comparing the different trees acquired in section b and c, scaling the variables caused different clusters. In this case, scaling the variables is necessary, because the different variables have different units.

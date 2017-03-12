@@ -1,0 +1,339 @@
+---
+title: "final_project"
+author: "Kai Li"
+date: "2/26/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(data.table)
+library(psych)
+library(e1071)
+library(pander)
+library(tree)
+library(rpart)
+library(randomForest)
+library(ggplot2)
+
+```
+
+- Add population to the formula
+
+## Introduction
+
+The project reported in this proposal is designed to revisit this topic by using the data of all the counties in the US collected by County Health Ranking & Roadmaps program . Based on the information offered by the program’s website, the County Health Rankings & Roadmaps program is created by the Robert Wood Johnson Foundation and the University of Wisconsin Population Health Institute, with the goals to build awareness of the factors to influence health, offer reliable data to improve local health conditions, and others. (“About”, n.d.) Its impact is reflected in its frequent reuse by other research projects.
+
+## Research questions
+
+1. Can we predict the rurality of counties by its attributes in health?
+2. Can we predict by the death rate of counties?
+
+
+## Method
+
+```{R}
+
+data2016 <- read.csv("2016.csv")
+
+colnames(data2016) <- c("FIPS", "State", "County", "Year", "Deaths", "smoker.percent", "obesity.percent", "drinking.percent", "uninsured.percent", "unemployed.percent", "food.insecure", "pm25", "water.violation", "health.food", "population", "deaths.previous")
+
+data2016$water.violation <- ifelse(data2016$water.violation == "Yes", 1, 0)
+
+for (i in 6:ncol(data2016)) {
+  for (j in 1:nrow(data2016)) {
+    if (is.na(data2016[j, i]) == T) {
+      data2016[j, i] <- mean(na.omit(data2016[,i]))
+    }
+  }
+}
+
+```
+
+The health data is taken from the County health Rankings & Roadmaps project, which publishes county health ranking data annually [^1]. For the sake of this analysis, datasets published in 2016 are retrieved from their website.
+
+[^1]: http://www.countyhealthrankings.org/rankings/data
+
+The following variables are used in this analysis:
+
+1. Outcome variable:
+
+- Premature mortality
+- Rurality (in question 1)
+
+2. Independent variables:
+
+- The percentage of smokers
+- The percentage of obesity
+- The percentage of excessive drinking
+- The percentage of uninsured
+- The percentage of unemployment
+- Food insecurity
+- Air security
+- Water quality violation
+- Access to health food
+- Rurality (in question 2)
+
+The rurality of US counties is taken from the (county classification table)[http://www2.census.gov/geo/docs/reference/ua/County_Rural_Lookup.xlsx] based on 2010 Census. Based on this classification scheme, all American counties are categoried into the following three types, based on the percentage of population living urban/rural areas:
+
+- Mostly urban ("0")
+- Mostly rural ("1")
+- Completely rural ("2")
+
+For all NA values that are not in the Deaths variable, use mean value of the variable instead. Remove all rows for those NA values in the Deaths variable.
+
+``` {R}
+
+rural <- read.csv("rural.csv")
+data2016 <- merge(x = data2016, y = rural,
+                  by.x = "FIPS",
+                  by.y = "fips",
+                  all.x = T,
+                  all.y = F)
+
+data2016$rurality.index <- ifelse(data2016$rurality < 50, "MU",
+                                  ifelse(data2016$rurality == 100, "AR", "MR"))
+
+data2016 <- data2016[-which(is.na(data2016$Deaths) == T),]
+data2016 <- data2016[-which(is.na(data2016$rurality) == T),]
+
+data <- data2016[,c(6:14, 18)]
+data$rurality.index <- as.factor(data$rurality.index)
+
+```
+
+## Question 1: predicting rurality
+
+To predict the rurality, svm is conducted to classify the counties by their attributes.
+
+``` {R}
+
+# svm
+
+set.seed(1)
+train <- sample(nrow(data), 2000)
+train.set <- as.data.frame(data[train,])
+test.set <- as.data.frame(data[-train,])
+
+```
+
+``` {R}
+
+# linear
+svmfit.tune.linear.train <- tune(svm, 
+                                 rurality.index ~ smoker.percent + obesity.percent + drinking.percent + uninsured.percent + unemployed.percent + food.insecure + pm25 + water.violation + health.food,
+                                 data = train.set,
+                                 kernel = "linear",
+                                 ranges = list(cost = c(0.01, 0.05, 0.1, 0.5, 1, 5, 10)))
+
+# linear: train
+predict.linear.train <- predict(svmfit.tune.linear.train$best.model, train.set)
+table <- table(predict = predict.linear.train, original = train.set$rurality.index)
+accuracy.1.1 <- mean(predict.linear.train == train.set[,"rurality.index"])
+
+# linear: test
+predict.linear.test <- predict(svmfit.tune.linear.train$best.model, test.set)
+table <- table(predict = predict.linear.test, original = test.set$rurality.index)
+accuracy.1.2 <- mean(predict.linear.test == test.set[,"rurality.index"])
+
+# radial
+svmfit.tune.radial.train <- tune(svm, 
+                                 rurality.index ~ smoker.percent + obesity.percent + drinking.percent + uninsured.percent + unemployed.percent + food.insecure + pm25 + water.violation + health.food,
+                                 data = train.set,
+                                 kernel = "radial",
+                                 ranges = list(cost = c(0.01, 0.05, 0.1, 0.5, 1, 5, 10)))
+
+# radial: train
+predict.radial.train <- predict(svmfit.tune.radial.train$best.model, train.set)
+table <- table(predict = predict.radial.train, original = train.set$rurality.index)
+accuracy.2.1 <- mean(predict.radial.train == train.set[,"rurality.index"])
+
+# radial: test
+predict.radial.test <- predict(svmfit.tune.radial.train$best.model, test.set)
+table <- table(predict = predict.radial.test, original = test.set$rurality.index)
+accuracy.2.2 <- mean(predict.radial.test == test.set[,"rurality.index"])
+
+# polynomial
+svmfit.tune.polynomial.train <- tune(svm, 
+                                 rurality.index ~ smoker.percent + obesity.percent + drinking.percent + uninsured.percent + unemployed.percent + food.insecure + pm25 + water.violation + health.food,
+                                 data = train.set,
+                                 kernel = "polynomial",
+                                 ranges = list(cost = c(0.01, 0.1, 1, 10),
+                                               gamma = c(0.01, 1)))
+
+# polynomial: train
+predict.polynomial.train <- predict(svmfit.tune.polynomial.train$best.model, train.set)
+table <- table(predict = predict.polynomial.train, original = train.set$rurality.index)
+table
+accuracy.3.1 <- mean(predict.polynomial.train == train.set[,"rurality.index"])
+
+# polynomial: test
+predict.polynomial.test <- predict(svmfit.tune.polynomial.train$best.model, test.set)
+table <- table(predict = predict.polynomial.test, original = test.set$rurality.index)
+table
+accuracy.3.2 <- mean(predict.polynomial.test == test.set[,"rurality.index"])
+
+# summary
+
+summary_table <- data.frame(Linear = c(accuracy.1.1, accuracy.1.2),
+                       Radial = c(accuracy.2.1, accuracy.2.2),
+                       Polynomial = c(accuracy.3.1, accuracy.3.2))
+summary_table <- round(summary_table, digits = 4)
+row.names(summary_table) <- c("Train.set", "Test.set")
+
+```
+
+``` {R}
+
+summary_table <- read.csv("summary_table.csv")
+pander(summary_table)
+
+```
+
+The results suggest that radial kernel produces the best prediction. However, the prediction accuracy is not very good.
+
+## Question 2: predict death rate
+
+#### Linear regression
+
+``` {R}
+
+death.rate <- data2016$Deaths / data2016$population 
+data <- cbind(data, death.rate = death.rate)
+data <- cbind(data, population = data2016$population)
+
+train.set <- data[train,]
+test.set <- data[-train,]
+
+reg <- lm(death.rate ~ ., train.set)
+summary(reg)
+
+prediction.train <- predict(reg, train.set, type="response")
+rmse.regression.train <- sqrt(mean((prediction.train - train.set$death.rate) ^ 2))
+mae.regression.train <- mean(abs(prediction.train - train.set$death.rate))
+
+prediction.test <- predict(reg, test.set, type = "response")
+rmse.regression.test <- sqrt(mean((prediction.test - test.set$death.rate) ^ 2))
+mae.regression.test <- mean(abs(prediction.test - test.set$death.rate))
+
+```
+
+Why it doesn't quite work? (or work?)
+
+#### Regression tree
+
+``` {R}
+
+# grow the tree
+set.seed(1)
+tree.train <- rpart(death.rate ~ .,
+             train.set,
+             method = "anova")
+printcp(tree.train)
+
+pruned.train <- prune.rpart(tree.train, cp = 0.010000)
+plot(pruned.train)
+text(pruned.train, pretty=0)
+
+prediction.tree.train <- predict(pruned.train, train.set, type = "matrix")
+rmse.tree.train <- sqrt(mean((prediction.tree.train - train.set$death.rate) ^ 2))
+mae.tree.train <- mean(abs(prediction.tree.train - train.set$death.rate))
+
+prediction.tree.test <- predict(pruned.train, test.set, type = "matrix")
+rmse.tree.test <- sqrt(mean((prediction.tree.test - test.set$death.rate) ^ 2))
+mae.tree.test <- mean(abs(prediction.tree.test - test.set$death.rate))
+
+```
+
+#### Random Forest
+
+``` {R}
+
+set.seed(1)
+rf <- randomForest(death.rate ~ ., data = train.set, importance = T)
+importance(rf)
+
+prediction.rf.train <- predict(rf, train.set)
+rmse.rf.train <- sqrt(mean((prediction.rf.train - train.set$death.rate) ^ 2))
+mae.rf.train <- mean(abs(prediction.rf.train - train.set$death.rate))
+
+prediction.rf.test <- predict(rf, test.set)
+rmse.rf.test <- sqrt(mean((prediction.rf.test - test.set$death.rate) ^ 2))
+mae.rf.test <- mean(abs(prediction.rf.test - test.set$death.rate))
+
+```
+
+``` {R}
+
+# quantilize the population
+
+quantile <- ecdf(data2016$population)
+
+for (i in 1:nrow(train.set)) {
+  train.set$value[i] <- quantile(train.set$population[i])
+  train.set$quantile[i] <- ifelse(train.set$value[i] < .25, "1", 
+                                  ifelse(train.set$value[i] < .5, "2",
+                                         ifelse(train.set$value[i] < .75, "3", "4")))
+}
+
+difference <- data.frame(quantile = as.numeric(train.set$quantile),
+                         real.death.rate = as.numeric(train.set$death.rate),
+                         predict.death.rate = as.numeric(prediction.rf.train))
+
+plot <- ggplot(difference, aes(x = real.death.rate, y = predict.death.rate)) +
+  geom_point() +
+  lims(x = c(0, 0.025), y = c(0, 0.025)) +
+  geom_abline() +
+  facet_wrap(~ quantile)
+plot
+
+difference$gap <- difference$real.death.rate - difference$predict.death.rate
+plot(difference$gap ~ as.factor(difference$quantile))
+
+difference$quantile <- as.factor(difference$quantile)
+difference$gap.1 <- abs(difference$gap)
+anova.train <- aov(gap.1 ~ quantile, data = difference)
+summary(anova.train)
+TukeyHSD(anova.train)
+
+```
+
+``` {R}
+
+# Do the same thing for test
+
+quantile <- ecdf(data2016$population)
+
+for (i in 1:nrow(test.set)) {
+  test.set$value[i] <- quantile(test.set$population[i])
+  test.set$quantile[i] <- ifelse(test.set$value[i] < .25, "1", 
+                                  ifelse(test.set$value[i] < .5, "2",
+                                         ifelse(test.set$value[i] < .75, "3", "4")))
+}
+
+difference <- data.frame(quantile = as.numeric(test.set$quantile),
+                         real.death.rate = as.numeric(test.set$death.rate),
+                         predict.death.rate = as.numeric(prediction.rf.test))
+
+plot <- ggplot(difference, aes(x = real.death.rate, y = predict.death.rate)) +
+  geom_point() +
+  lims(x = c(0, 0.025), y = c(0, 0.025)) +
+  geom_abline() +
+  facet_wrap(~ quantile)
+plot
+
+difference$gap <- difference$real.death.rate - difference$predict.death.rate
+plot(difference$gap ~ as.factor(difference$quantile))
+
+## Difference could be determined by ANOVA.
+
+difference$gap.1 <- abs(difference$gap)
+difference$quantile <- as.factor(difference$quantile)
+anova.train <- aov(gap.1 ~ quantile, data = difference)
+summary(anova.train)
+TukeyHSD(anova.train)
+
+```
+
+Myabe contrast the difference between models w and w/o population as a predictor.

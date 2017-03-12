@@ -39,6 +39,8 @@ train <- sample(nrow(OJ), 800)
 OJ.train <- OJ[train,]
 OJ.test <- OJ[-train,]
 
+
+
 ```
 
 #### (b) Fit support vector classifier with training set

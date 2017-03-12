@@ -1,0 +1,32 @@
+Understanding mortality rates on the US county-level: is prediction possible?
+========================================================
+author: Kai Li
+date: March 15, 2017
+autosize: true
+
+Questions
+========================================================
+
+- Is predicting the mortalities of US counties possible?
+- How accurate the predictions could be, if it's possible by any means?
+
+Backgrounds
+========================================================
+
+[County Health Ranking & Roadmaps](http://www.countyhealthrankings.org/), created by the Robert Wood Johnson Foundation and the University of Wisconsin Population Health Institute, is a project to "provide a reliable, sustainable source of local data" concerning local health conditions and to bBuild awareness of the multiple factors that influence health."
+
+It offers annual reports concerning vital health factors covering nearly every US counties, such as high school graduation rates, obesity, smoking, unemployment, access to healthy foods, the quality of air and water, income inequality, and teen births.
+
+Slide With Code
+========================================================
+
+```{r}
+summary(cars)
+```
+
+Slide With Plot
+========================================================
+
+```{r, echo=FALSE}
+plot(cars)
+```
