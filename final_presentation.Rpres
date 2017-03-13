@@ -71,7 +71,7 @@ What is covered in the annual dataset?
 
 ![](https://github.com/nalsi/PSY880_data_mining/raw/master/Screen%20Shot%202017-03-11%20at%209.15.14%20PM.png)
 
-(Peppard et al., 2008)
+[Peppard et al., 2008]
 
 Moreover, level of urbanization is taken from the website of [US Census Bureau](https://www.census.gov/geo/reference/urban-rural.html), based on the 2010 Census data. Three categories are used in the coding, "mostly urban" ("MU"), "mostly rural" ("UR"), and "totally rural"("TR").
 
@@ -322,3 +322,32 @@ forest.table[,3] <- round(forest.table[,3], digits = 6)
 kable(forest.table)
 
 ```
+
+What does it mean?
+========================================================
+
+Let's go back to the histogram in the beginning of this presentation.
+
+``` {R echo = F}
+
+hist(data$death.rate,
+     xlab = "Death rate",
+     main = "Histogram of death rate",
+     breaks = 30)
+
+```
+
+Kidney cancer rates in the US counties
+========================================================
+
+The counties with the highest and lowest kidney cancer rates in the US: they tend to be "rural, mid-western, southern, and western" (Gelman, 2009).
+
+``` {R echo = F, out.width = "500px"}
+
+knitr::include_graphics("https://github.com/nalsi/PSY880_data_mining/raw/master/Picture1.png")
+knitr::include_graphics("https://github.com/nalsi/PSY880_data_mining/raw/master/Picture2.png")
+
+```
+
+Kidney cancer rates in the US counties (cont.)
+========================================================

@@ -24,7 +24,7 @@ What is covered in the annual dataset?
 
 ![](https://github.com/nalsi/PSY880_data_mining/raw/master/Screen%20Shot%202017-03-11%20at%209.15.14%20PM.png)
 
-(Peppard et al., 2008)
+[Peppard et al., 2008]
 
 Moreover, level of urbanization is taken from the website of [US Census Bureau](https://www.census.gov/geo/reference/urban-rural.html), based on the 2010 Census data. Three categories are used in the coding, "mostly urban" ("MU"), "mostly rural" ("UR"), and "totally rural"("TR").
 
@@ -206,3 +206,20 @@ Below are the results of prediction based on the random forest model, which is t
 |:-------|--------:|--------:|
 |Train   | 0.000766| 0.001028|
 |Test    | 0.001744| 0.002299|
+
+What does it mean?
+========================================================
+
+Let's go back to the histogram in the beginning of this presentation.
+
+![plot of chunk unnamed-chunk-15](final_presentation-figure/unnamed-chunk-15-1.png)
+
+Kidney cancer rates in the US counties
+========================================================
+
+The counties with the highest and lowest kidney cancer rates in the US: they tend to be "rural, mid-western, southern, and western" (Gelman, 2009).
+
+<img src="https://github.com/nalsi/PSY880_data_mining/raw/master/Picture1.png" title="plot of chunk unnamed-chunk-16" alt="plot of chunk unnamed-chunk-16" width="500px" /><img src="https://github.com/nalsi/PSY880_data_mining/raw/master/Picture2.png" title="plot of chunk unnamed-chunk-16" alt="plot of chunk unnamed-chunk-16" width="500px" />
+
+Kidney cancer rates in the US counties (cont.)
+========================================================
