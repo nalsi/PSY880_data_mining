@@ -109,8 +109,6 @@ To predict the rurality, svm is conducted to classify the counties by their attr
 
 ``` {R}
 
-# svm
-
 set.seed(1)
 train <- sample(nrow(data), 2000)
 train.set <- as.data.frame(data[train,])
@@ -202,9 +200,6 @@ The results suggest that radial kernel produces the best prediction. However, th
 death.rate <- data2016$Deaths / data2016$population 
 data <- cbind(data, death.rate = death.rate)
 data <- cbind(data, population = data2016$population)
-
-train.set <- data[train,]
-test.set <- data[-train,]
 
 reg <- lm(death.rate ~ ., train.set)
 summary(reg)

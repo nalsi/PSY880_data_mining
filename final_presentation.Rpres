@@ -4,6 +4,55 @@ author: Kai Li
 date: March 15, 2017
 autosize: true
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(data.table)
+library(psych)
+library(e1071)
+library(pander)
+library(tree)
+library(rpart)
+library(randomForest)
+library(ggplot2)
+library(knitr)
+library(Metrics)
+
+data2016 <- read.csv("2016.csv")
+
+colnames(data2016) <- c("FIPS", "State", "County", "Year", "Deaths", "smoker.percent", "obesity.percent", "drinking.percent", "uninsured.percent", "unemployed.percent", "food.insecure", "pm25", "water.violation", "health.food", "population", "deaths.previous")
+
+data2016$water.violation <- ifelse(data2016$water.violation == "Yes", 1, 0)
+
+for (i in 6:ncol(data2016)) {
+  for (j in 1:nrow(data2016)) {
+    if (is.na(data2016[j, i]) == T) {
+      data2016[j, i] <- mean(na.omit(data2016[,i]))
+    }
+  }
+}
+
+rural <- read.csv("rural.csv")
+data2016 <- merge(x = data2016, y = rural,
+                  by.x = "FIPS",
+                  by.y = "fips",
+                  all.x = T,
+                  all.y = F)
+
+data2016$rurality.index <- ifelse(data2016$rurality < 50, "MU",
+                                  ifelse(data2016$rurality == 100, "AR", "MR"))
+
+data2016 <- data2016[-which(is.na(data2016$Deaths) == T),]
+data2016 <- data2016[-which(is.na(data2016$rurality) == T),]
+
+data <- data2016[,c(6:14, 18)]
+data$rurality.index <- as.factor(data$rurality.index)
+
+death.rate <- data2016$Deaths / data2016$population 
+data <- cbind(data, death.rate = death.rate)
+
+```
+
 Questions
 ========================================================
 
@@ -17,16 +66,259 @@ Backgrounds
 
 It offers annual reports concerning vital health factors covering nearly every US counties, such as high school graduation rates, obesity, smoking, unemployment, access to healthy foods, the quality of air and water, income inequality, and teen births.
 
-Slide With Code
+What is covered in the annual dataset?
 ========================================================
 
-```{r}
-summary(cars)
+![](https://github.com/nalsi/PSY880_data_mining/raw/master/Screen%20Shot%202017-03-11%20at%209.15.14%20PM.png)
+
+(Peppard et al., 2008)
+
+Moreover, level of urbanization is taken from the website of [US Census Bureau](https://www.census.gov/geo/reference/urban-rural.html), based on the 2010 Census data. Three categories are used in the coding, "mostly urban" ("MU"), "mostly rural" ("UR"), and "totally rural"("TR").
+
+Dataset used in this analysis
+========================================================
+
+``` {R echo = F}
+
+table <- data.frame(Variable.name = c(colnames(data2016)[5:14], "Rurality"), 
+          Definition = rep("", 11),
+          Year.period = rep("", 11))
+
+table[,2] <- as.character(c("Premature deaths numbers",
+                    "Percentage of Smokers",
+                    "Percentage of obesity",
+                    "Percentage of obessive drinking",
+                    "Percentage of uninsured",
+                    "Percentage of unemployment",
+                    "Percentage of insecure food access",
+                    "Percentage of health food access",
+                    "Average PM 2.5",
+                    "Drinking water violation",
+                    "Level of rurality"))
+
+table[,3] <- c("2011-13",
+                    "2014",
+                    "2012",
+                    "2014",
+                    "2013",
+                    "2014",
+                    "2013",
+                    "2010",
+                    "2011",
+                    "2013-14",
+               "2010")
+
+knitr::kable(table)
+
 ```
 
-Slide With Plot
+Link: [Project website](http://www.countyhealthrankings.org/sites/default/files/2016CSV_SAS%20DatasetDocumentation.pdf)
+
+Data cleaning
 ========================================================
 
+All the observations with NA value in Deaths are removed. For all the NA values in other variables, the mean value of all the other observations is used instead.
+
+2,983 out of 3,141 observations are present in the final dataset. The same randomly selected 2,000 and 983 observations were used as the train/test sets in all the analyses.
+
+``` {r echo = F}
+
+set.seed(1)
+train <- sample(nrow(data), 2000)
+
+```
+
+Method
+========================================================
+
+Three methods are used in this study to predict the mortality rate:
+- Linear regression
+- Decision tree
+- Random forest
+
+Distribution of death rates
+========================================================
+
+``` {R echo = F}
+
+hist(data$death.rate,
+     xlab = "Death rate",
+     main = "Histogram of death rate",
+     breaks = 30)
+
+```
+
+Linear regression
+========================================================
+
+The first linear model is based on all predictors.
+
 ```{r, echo=FALSE}
-plot(cars)
+
+train.set <- as.data.frame(data[train,])
+test.set <- as.data.frame(data[-train,])
+
+```
+
+``` {R}
+
+linear.model.1 <- lm(death.rate ~ ., train.set)
+
+```
+
+``` {R echo = F}
+
+knitr::kable(as.data.frame(summary(linear.model.1)$coefficients))
+
+```
+
+Linear regression (cont.)
+========================================================
+
+The second linear model is based on only those predictors that are proven to be relevant in the first model.
+
+``` {R}
+
+linear.model.2 <- lm(death.rate ~ smoker.percent + obesity.percent + drinking.percent + unemployed.percent + food.insecure + rurality.index, 
+                     train.set)
+
+```
+
+``` {r echo = F}
+
+knitr::kable(as.data.frame(summary(linear.model.2)$coefficients))
+
+```
+
+Prediction based on linear models
+========================================================
+
+Evaluation of the prediction is based on two criteria:
+- Mean absolute error (MAE): mean(|error|) (Based on "Metrics::mae" function)
+- Root mean squared error (RMSE): sqrt(mean(error^2)) (Based on "Metrics::rmse" function)
+
+``` {R echo = F}
+
+prediction.train.1 <- predict(linear.model.1, train.set, type="response")
+rmse.regression.train.1 <- rmse(prediction.train.1, train.set$death.rate)
+mae.regression.train.1 <- mae(prediction.train.1, train.set$death.rate)
+
+prediction.test.1 <- predict(linear.model.1, test.set, type = "response")
+rmse.regression.test.1 <- rmse(prediction.test.1, test.set$death.rate)
+mae.regression.test.1 <- mae(prediction.test.1, test.set$death.rate)
+
+prediction.train.2 <- predict(linear.model.2, train.set, type="response")
+rmse.regression.train.2 <- rmse(prediction.train.2, train.set$death.rate)
+mae.regression.train.2 <- mae(prediction.train.2, train.set$death.rate)
+
+prediction.test.2 <- predict(linear.model.2, test.set, type = "response")
+rmse.regression.test.2 <- rmse(prediction.test.2, test.set$death.rate)
+mae.regression.test.2 <- mae(prediction.test.2, test.set$death.rate)
+
+```
+
+``` {R echo = F}
+
+summary.linear.table <- data.frame(Model = c(rep("linear.model.1", 2), rep("linear.model.2", 2)),
+                                   Dataset = c("Train", "Test", "Train", "Test"),
+                                   MAE = c(mae.regression.train.1,
+                                           mae.regression.test.1,
+                                           mae.regression.train.2,
+                                           mae.regression.test.2),
+                                   RMSE = c(rmse.regression.train.1,
+                                            rmse.regression.test.1,
+                                            rmse.regression.train.2,
+                                            rmse.regression.test.2))
+
+summary.linear.table[,3] <- round(summary.linear.table[,3], digits = 6)
+summary.linear.table[,4] <- round(summary.linear.table[,4], digits = 6)
+
+knitr::kable(summary.linear.table)
+
+```
+
+Tree model 
+========================================================
+
+A tree model is established between the mortality rate and all the other predictors. However, the results of the model seem to suggest that the data doesn't fit into a tree model very well.
+
+``` {R echo = F}
+
+set.seed(1)
+tree.train <- rpart(death.rate ~ .,
+             train.set,
+             method = "anova")
+knitr::kable(tree.train$cptable)
+
+```
+
+Tree model (cont.)
+========================================================
+
+The tree is pruned at 11 splits. Below is the summary of the prediction, which is higher than that is based on the linear models.
+
+``` {R echo = F}
+
+pruned.train <- prune.rpart(tree.train, cp = 0.010000)
+
+prediction.tree.train <- predict(pruned.train, train.set, type = "matrix")
+rmse.tree.train <- rmse(prediction.tree.train, train.set$death.rate)
+mae.tree.train <- mae(prediction.tree.train, train.set$death.rate)
+
+prediction.tree.test <- predict(pruned.train, test.set, type = "matrix")
+rmse.tree.test <- rmse(prediction.tree.test, test.set$death.rate)
+mae.tree.test <- mae(prediction.tree.test, test.set$death.rate)
+
+tree.summary <- data.frame(Dataset = c("Train", "Test"),
+                      MAE = c(mae.tree.train,
+                              mae.tree.test),
+                      RMSE = c(rmse.tree.train,
+                               rmse.tree.test))
+
+tree.summary[,2] <- round(tree.summary[,2], digits = 6)
+tree.summary[,3] <- round(tree.summary[,3], digits = 6)
+
+knitr::kable(tree.summary)
+
+```
+
+Random forest
+========================================================
+
+Below is the list of importance of all the predictors. Obessive drinking, unemployment and rurality are some of the top predictors.
+
+``` {R}
+
+set.seed(1)
+rf <- randomForest(death.rate ~ ., data = train.set, importance = T)
+importance(rf)
+
+```
+
+Random forest (cont.)
+========================================================
+
+Below are the results of prediction based on the random forest model, which is the best among all the three models in this analysis. However, there is also a deep gap between the precisions based on the train and test sets.
+
+``` {R echo = F}
+
+prediction.rf.train <- predict(rf, train.set)
+rmse.rf.train <- rmse(prediction.rf.train, train.set$death.rate)
+mae.rf.train <- mae(prediction.rf.train, train.set$death.rate)
+
+prediction.rf.test <- predict(rf, test.set)
+rmse.rf.test <- rmse(prediction.rf.test, test.set$death.rate)
+mae.rf.test <- mae(prediction.rf.test, test.set$death.rate)
+
+forest.table <- data.frame(Dataset = c("Train", "Test"),
+                           MAE = c(mae.rf.train,
+                                   mae.rf.test),
+                           RMSE = c(rmse.rf.train,
+                                    rmse.rf.test))
+
+forest.table[,2] <- round(forest.table[,2], digits = 6)
+forest.table[,3] <- round(forest.table[,3], digits = 6)
+
+kable(forest.table)
+
 ```
